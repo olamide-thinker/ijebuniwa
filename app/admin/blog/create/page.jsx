@@ -17,12 +17,22 @@ import debounce from 'lodash.debounce'
 import BackBtn from '@/lib/backBtn'
 import { Button } from '@nextui-org/react'
 
+import { useAuth } from '@/contexts/AuthContext'
+
 export default function CreateBlogPage() {
+    const { user } = useAuth()
     const router = useRouter()
     const [title, setTitle] = useState('')
     const [content, setContent] = useState({})
     const [author, setAuthor] = useState('')
     const [publishDate, setPublishDate] = useState(new Date().toISOString().split('T')[0])
+
+    // Set default author to current user
+    useEffect(() => {
+        if (user?.displayName && !author) {
+            setAuthor(user.displayName)
+        }
+    }, [user])
     const [isFeatured, setIsFeatured] = useState(false)
     const [categories, setCategories] = useState([])
     const [tags, setTags] = useState([])
@@ -171,8 +181,19 @@ export default function CreateBlogPage() {
                 }
                 blogId = result.id
                 setCurrentBlogId(blogId)
+            } else {
+                // Save current changes before publishing
+                const blogData = {
+                    title,
+                    content,
+                    author,
+                    publishDate: new Date(publishDate),
+                    isFeatured,
+                    categories,
+                    tags,
+                }
+                await updateBlogPost(blogId, blogData)
             }
-
             // Publish it
             const publishResult = await publishBlogPost(blogId)
 

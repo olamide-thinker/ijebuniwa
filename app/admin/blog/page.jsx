@@ -1,18 +1,32 @@
 'use client'
 
-import { useBlogPosts } from '@/lib/firestore/blog/read'
+import { useBlogPosts, useBlogCategories } from '@/lib/firestore/blog/read'
 import { deleteBlogPost } from '@/lib/firestore/blog/write'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import BackBtn from '@/lib/backBtn'
 import { Button } from '@nextui-org/react'
 import { Edit2, Trash2 } from 'lucide-react'
 
 export default function BlogListPage() {
-    const { data: blogs, isLoading, error, mutate } = useBlogPosts()
+    const { data: blogs, isLoading: blogsLoading, error, mutate } = useBlogPosts()
+    const { data: categoriesData, isLoading: categoriesLoading } = useBlogCategories()
     const router = useRouter()
     const [deleteConfirm, setDeleteConfirm] = useState(null)
+
+    const isLoading = blogsLoading || categoriesLoading
+
+    // Create a mapping of category ID to category name for easy lookup
+    const categoryMap = useMemo(() => {
+        const map = {}
+        if (categoriesData?.data) {
+            categoriesData.data.forEach(cat => {
+                map[cat.id] = cat.name
+            })
+        }
+        return map
+    }, [categoriesData])
 
     const handleDelete = async (id) => {
         const result = await deleteBlogPost(id)
@@ -82,6 +96,7 @@ export default function BlogListPage() {
                                 <th className="px-3 py-2 font-semibold bg-white border-l rounded-l-lg border-y">SN</th>
                                 <th className="px-3 py-2 font-semibold bg-white border-y text-left">Image</th>
                                 <th className="px-3 py-2 font-semibold text-left bg-white border-y">Title</th>
+                                <th className="px-3 py-2 font-semibold text-left bg-white border-y">Category</th>
                                 <th className="px-3 py-2 font-semibold text-left bg-white border-y">Author</th>
                                 <th className="px-3 py-2 font-semibold text-left bg-white border-y">Date</th>
                                 <th className="px-3 py-2 font-semibold text-left bg-white border-y">Status</th>
@@ -101,7 +116,7 @@ export default function BlogListPage() {
                                             />
                                         </div>
                                     </td>
-                                    <td className="w-full min-w-[300px] px-3 py-2 bg-white border-y">
+                                    <td className="w-full min-w-[250px] px-3 py-2 bg-white border-y">
                                         <div className="flex flex-col">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-semibold text-sm text-gray-900 dark:text-white">{blog.title}</span>
@@ -111,7 +126,20 @@ export default function BlogListPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-gray-400 truncate max-w-[250px]">{blog.excerpt || 'No excerpt'}</span>
+                                            <span className="text-xs text-gray-400 truncate max-w-[200px]">{blog.excerpt || 'No excerpt'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-2 bg-white border-y text-sm whitespace-nowrap">
+                                        <div className="flex flex-wrap gap-1">
+                                            {blog.categories?.length > 0 ? (
+                                                blog.categories.map(catId => (
+                                                    <span key={catId} className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded">
+                                                        {categoryMap[catId] || catId}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-gray-400 italic">No category</span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-3 py-2 bg-white border-y text-sm whitespace-nowrap text-gray-600 font-medium">{blog.author || 'Unknown'}</td>

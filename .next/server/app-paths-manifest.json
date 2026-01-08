@@ -1,8 +1,10 @@
 {
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
+  "/admin/events/page": "app/admin/events/page.js",
   "/admin/blog/page": "app/admin/blog/page.js",
-  "/admin/products/form/page": "app/admin/products/form/page.js",
-  "/admin/categories/page": "app/admin/categories/page.js",
+  "/admin/events/edit/[eventId]/page": "app/admin/events/edit/[eventId]/page.js",
   "/admin/blog/edit/[blogId]/page": "app/admin/blog/edit/[blogId]/page.js",
   "/(pages)/categories/[categoryId]/page": "app/(pages)/categories/[categoryId]/page.js"
 }
