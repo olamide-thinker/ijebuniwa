@@ -1,0 +1,192 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "products",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "category",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "price",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "products",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "isPublished",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestampCreate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "products",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "brand",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestampCreate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "blogs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "publishDate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "blogs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "isFeatured",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "publishDate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "blogs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "categories",
+                    "arrayConfig": "CONTAINS"
+                },
+                {
+                    "fieldPath": "publishDate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestampCreate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestampCreate",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "stock",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "isPublished",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "available_stock",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "reviews",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "productId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "rating",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": [
+        {
+            "collectionGroup": "products",
+            "fieldPath": "timestampCreate",
+            "indexes": [
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION"
+                },
+                {
+                    "order": "DESCENDING",
+                    "queryScope": "COLLECTION"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "blogs",
+            "fieldPath": "publishDate",
+            "indexes": [
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION"
+                },
+                {
+                    "order": "DESCENDING",
+                    "queryScope": "COLLECTION"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "orders",
+            "fieldPath": "timestampCreate",
+            "indexes": [
+                {
+                    "order": "ASCENDING",
+                    "queryScope": "COLLECTION"
+                },
+                {
+                    "order": "DESCENDING",
+                    "queryScope": "COLLECTION"
+                }
+            ]
+        }
+    ]
+}
