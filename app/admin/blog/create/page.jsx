@@ -14,6 +14,8 @@ import PublishSettings from '../components/PublishSettings'
 import { createBlogPost, updateBlogPost, publishBlogPost, autoSaveBlogPost } from '@/lib/firestore/blog/write'
 import toast from 'react-hot-toast'
 import debounce from 'lodash.debounce'
+import BackBtn from '@/lib/backBtn'
+import { Button } from '@nextui-org/react'
 
 export default function CreateBlogPage() {
     const router = useRouter()
@@ -45,6 +47,7 @@ export default function CreateBlogPage() {
                 types: ['heading', 'paragraph'],
             }),
         ],
+        immediatelyRender: false,
         content: '',
         editorProps: {
             attributes: {
@@ -57,26 +60,41 @@ export default function CreateBlogPage() {
             setContent(json)
             setWordCount(text.split(/\s+/).filter((word) => word.length > 0).length)
 
-            // Auto-save if blog post exists
-            if (currentBlogId) {
-                debouncedAutoSave(currentBlogId, {
-                    title,
-                    content: json,
-                })
-            }
+            // Auto-save: Create draft if it doesn't exist, otherwise update
+            debouncedAutoSave({
+                title,
+                content: json,
+                author,
+                publishDate: new Date(publishDate),
+                isFeatured,
+                categories,
+                tags,
+                status: 'draft',
+            })
         },
     })
 
     // Debounced auto-save
     const debouncedAutoSave = useCallback(
-        debounce(async (id, data) => {
-            const result = await autoSaveBlogPost(id, data)
-            if (result.success) {
-                const now = new Date()
-                setLastSaved(`${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`)
+        debounce(async (data) => {
+            if (currentBlogId) {
+                // Update existing
+                const result = await autoSaveBlogPost(currentBlogId, data)
+                if (result.success) {
+                    const now = new Date()
+                    setLastSaved(`${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`)
+                }
+            } else if (data.title && data.title.trim().length > 0) {
+                // Create first draft
+                const result = await createBlogPost(data)
+                if (result.success) {
+                    setCurrentBlogId(result.id)
+                    const now = new Date()
+                    setLastSaved(`${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`)
+                }
             }
         }, 2000),
-        [],
+        [currentBlogId, title, author, publishDate, isFeatured, categories, tags],
     )
 
     const handleSaveDraft = async () => {
@@ -178,66 +196,89 @@ export default function CreateBlogPage() {
     }
 
     return (
-        <div className="flex-grow w-full max-w-[1440px] mx-auto p-6 lg:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left Column: Editor (8 cols) */}
-            <div className="lg:col-span-8 flex flex-col gap-6">
-                {/* Page Heading */}
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-3xl lg:text-4xl font-black leading-tight tracking-[-0.033em] text-gray-900 dark:text-white">
-                        Create New Article
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-base font-normal">
-                        Share the heritage and stories of Ijebu with the world.
-                    </p>
-                </div>
-
-                {/* Editor Card */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col min-h-[600px] flex-grow">
-                    {/* Title Input */}
-                    <div className="p-8 pb-4">
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full bg-transparent border-none p-0 text-3xl lg:text-5xl font-bold placeholder-gray-300 dark:placeholder-gray-600 text-gray-900 dark:text-white focus:ring-0 leading-tight"
-                            placeholder="Enter a captivating title..."
-                        />
-                    </div>
-
-                    {/* Toolbar */}
-                    <BlogToolbar editor={editor} />
-
-                    {/* Writing Canvas */}
-                    <div className="flex-grow p-8 relative">
-                        <EditorContent editor={editor} className="h-full w-full" />
-                    </div>
-
-                    {/* Word Count Footer */}
-                    <div className="px-8 py-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 flex justify-between">
-                        <span>{lastSaved ? `Last saved at ${lastSaved}` : 'Not saved yet'}</span>
-                        <span>{wordCount} words</span>
-                    </div>
+        <main className="flex flex-col gap-4 p-5">
+            {/* Header */}
+            <div className="flex items-center justify-between w-full">
+                <BackBtn pageName="Create New Article" />
+                <div className="flex gap-2">
+                    <Button
+                        variant="flat"
+                        onClick={handleSaveDraft}
+                        isLoading={isLoading}
+                    >
+                        Save Draft
+                    </Button>
+                    <Button
+                        className="bg-[#313131] text-white"
+                        onClick={handlePublish}
+                        isLoading={isLoading}
+                    >
+                        Publish
+                    </Button>
                 </div>
             </div>
 
-            {/* Right Column: Sidebar (4 cols) */}
-            <PublishSettings
-                author={author}
-                setAuthor={setAuthor}
-                publishDate={publishDate}
-                setPublishDate={setPublishDate}
-                isFeatured={isFeatured}
-                setIsFeatured={setIsFeatured}
-                categories={categories}
-                setCategories={setCategories}
-                tags={tags}
-                setTags={setTags}
-                onPublish={handlePublish}
-                onSaveDraft={handleSaveDraft}
-                onPreview={handlePreview}
-                wordCount={wordCount}
-                lastSaved={lastSaved}
-            />
-        </div>
+            <div className="flex flex-col md:flex-row gap-5 relative h-[80vh] overflow-auto">
+                {/* Left Panel: Editor (8 cols equivalent in flex) */}
+                <div className="flex-[2] flex flex-col gap-5 h-fit">
+                    {/* Editor Card */}
+                    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 flex flex-col min-h-[600px]">
+                        <h2 className="font-semibold mb-3 text-sm">Article Content</h2>
+
+                        {/* Title Input Standardized */}
+                        <div className="flex flex-col gap-1 mb-6">
+                            <label className="text-xs text-gray-500 font-medium" htmlFor="article-title">
+                                Title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="article-title"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="w-full bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-2xl font-bold placeholder-gray-300 dark:placeholder-gray-600 text-gray-900 dark:text-white focus:border-gray-400 outline-none transition-all"
+                                placeholder="Enter a captivating title..."
+                            />
+                        </div>
+
+                        {/* Toolbar */}
+                        <div className="mb-2">
+                            <BlogToolbar editor={editor} />
+                        </div>
+
+                        {/* Writing Canvas */}
+                        <div className="flex-grow p-4 border border-gray-100 dark:border-gray-800 rounded-lg bg-gray-50/30">
+                            <EditorContent editor={editor} className="h-full w-full" />
+                        </div>
+
+                        {/* Word Count Footer */}
+                        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 flex justify-between font-medium">
+                            <span>{lastSaved ? `Last saved at ${lastSaved}` : 'Not saved yet'}</span>
+                            <span>{wordCount} words</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Sidebar (4 cols equivalent in flex) */}
+                <div className="flex-1 flex flex-col gap-5">
+                    <PublishSettings
+                        author={author}
+                        setAuthor={setAuthor}
+                        publishDate={publishDate}
+                        setPublishDate={setPublishDate}
+                        isFeatured={isFeatured}
+                        setIsFeatured={setIsFeatured}
+                        categories={categories}
+                        setCategories={setCategories}
+                        tags={tags}
+                        setTags={setTags}
+                        onPublish={handlePublish}
+                        onSaveDraft={handleSaveDraft}
+                        onPreview={handlePreview}
+                        wordCount={wordCount}
+                        lastSaved={lastSaved}
+                    />
+                </div>
+            </div>
+        </main>
     )
 }

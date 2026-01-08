@@ -1,12 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useBlogCategories } from '@/lib/firestore/blog/read'
+import { createCategory } from '@/lib/firestore/blog/write'
+import toast from 'react-hot-toast'
+import { Checkbox, Input, Button, Chip } from '@nextui-org/react'
+import { Plus, X } from 'lucide-react'
 
 const DEFAULT_CATEGORIES = [
     { id: 'culture-heritage', name: 'Culture & Heritage' },
     { id: 'festivals', name: 'Festivals' },
     { id: 'cuisine', name: 'Cuisine' },
     { id: 'art-craft', name: 'Art & Craft' },
+    { id: 'news', name: 'News' },
 ]
 
 export default function PublishSettings({
@@ -20,19 +26,66 @@ export default function PublishSettings({
     setCategories,
     tags,
     setTags,
-    onPublish,
-    onSaveDraft,
-    onPreview,
-    wordCount = 0,
-    lastSaved,
 }) {
     const [tagInput, setTagInput] = useState('')
+    const [categoryInput, setCategoryInput] = useState('')
+    const [availableCategories, setAvailableCategories] = useState(DEFAULT_CATEGORIES)
+
+    // Load categories from Firestore
+    const { data: firestoreCategories, mutate: mutateCategories } = useBlogCategories()
+
+    // Merge Firestore categories with defaults
+    useEffect(() => {
+        if (firestoreCategories?.data) {
+            const firestoreCats = firestoreCategories.data.map(cat => ({
+                id: cat.id,
+                name: cat.name || cat.id
+            }))
+
+            // Merge and deduplicate
+            const merged = [...DEFAULT_CATEGORIES]
+            firestoreCats.forEach(cat => {
+                if (!merged.find(c => c.id === cat.id)) {
+                    merged.push(cat)
+                }
+            })
+
+            setAvailableCategories(merged)
+        }
+    }, [firestoreCategories])
 
     const toggleCategory = (categoryId) => {
         if (categories.includes(categoryId)) {
             setCategories(categories.filter((c) => c !== categoryId))
         } else {
             setCategories([...categories, categoryId])
+        }
+    }
+
+    const addCategory = async () => {
+        if (categoryInput.trim()) {
+            const categoryId = categoryInput.toLowerCase().replace(/\s+/g, '-')
+            const categoryExists = availableCategories.some((c) => c.id === categoryId)
+
+            if (!categoryExists) {
+                // Add to local state immediately
+                const newCategory = { id: categoryId, name: categoryInput.trim() }
+                setAvailableCategories([...availableCategories, newCategory])
+
+                // Save to Firestore
+                const result = await createCategory(categoryInput.trim())
+
+                if (result.success) {
+                    toast.success('Category added!')
+                    mutateCategories()
+                } else {
+                    toast.error(result.error || 'Failed to add category')
+                    setAvailableCategories(availableCategories.filter(c => c.id !== categoryId))
+                }
+            } else {
+                toast.error('Category already exists')
+            }
+            setCategoryInput('')
         }
     }
 
@@ -43,146 +96,120 @@ export default function PublishSettings({
         }
     }
 
-    const removeTag = (tag) => {
-        setTags(tags.filter((t) => t !== tag))
+    const removeTag = (tagToRemove) => {
+        setTags(tags.filter((t) => t !== tagToRemove))
     }
 
     return (
-        <div className="lg:col-span-4 flex flex-col gap-6">
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3 sticky top-[80px] z-30">
-                <div className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex gap-3">
-                    <button
-                        onClick={onPreview}
-                        className="flex-1 h-10 px-4 rounded border border-gray-200 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                        Preview
-                    </button>
-                    <button
-                        onClick={onPublish}
-                        className="flex-1 h-10 px-4 rounded border border-transparent bg-blue-600 text-white text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                        <span>Publish</span>
-                        <span className="material-symbols-outlined text-sm">send</span>
-                    </button>
-                </div>
-                <button
-                    onClick={onSaveDraft}
-                    className="w-full text-center text-sm text-gray-500 hover:text-blue-600 underline decoration-dotted transition-colors"
-                >
-                    Save as Draft
-                </button>
-            </div>
+        <div className="flex flex-col gap-5">
+            {/* Publish Settings Section */}
+            <section className="flex flex-col gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
+                <h3 className="font-semibold text-sm">Publish Settings</h3>
 
-            {/* Status */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 flex justify-between text-xs text-gray-400">
-                    <span>{lastSaved ? `Last saved ${lastSaved}` : 'Not saved'}</span>
-                    <span>{wordCount} words</span>
-                </div>
-            </div>
-
-            {/* Publish Settings */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Publish Settings</h3>
-                </div>
-                <div className="p-4 flex flex-col gap-4">
-                    <label className="flex flex-col gap-1.5">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Author</span>
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium" htmlFor="author">Author</label>
                         <input
+                            id="author"
                             type="text"
                             value={author}
                             onChange={(e) => setAuthor(e.target.value)}
-                            className="w-full h-10 px-3 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm outline-none focus:border-gray-400 transition-all"
                             placeholder="Enter author name"
                         />
-                    </label>
-                    <label className="flex flex-col gap-1.5">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Publish Date</span>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-gray-500 font-medium" htmlFor="publish-date">Publish Date</label>
                         <input
+                            id="publish-date"
                             type="date"
                             value={publishDate}
                             onChange={(e) => setPublishDate(e.target.value)}
-                            className="w-full h-10 px-3 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm outline-none focus:border-gray-400 transition-all"
                         />
-                    </label>
-                    <label className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Featured Article</span>
+                    </div>
+
+                    <Checkbox
+                        isSelected={isFeatured}
+                        onValueChange={setIsFeatured}
+                        size="sm"
+                        className="mt-1"
+                    >
+                        <span className="text-sm">Featured Article</span>
+                    </Checkbox>
+                </div>
+            </section>
+
+            {/* Categories Section */}
+            <section className="flex flex-col gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl font-poppins">
+                <h3 className="font-semibold text-sm">Categories</h3>
+
+                <div className="flex flex-col gap-3">
+                    <div className="flex gap-2">
                         <input
-                            type="checkbox"
-                            checked={isFeatured}
-                            onChange={(e) => setIsFeatured(e.target.checked)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                            type="text"
+                            value={categoryInput}
+                            onChange={(e) => setCategoryInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+                            placeholder="Add category..."
+                            className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm outline-none focus:border-gray-400 transition-all"
                         />
-                    </label>
-                </div>
-            </div>
-
-            {/* Taxonomy */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Taxonomy</h3>
-                </div>
-                <div className="p-4 flex flex-col gap-4">
-                    {/* Categories */}
-                    <div className="flex flex-col gap-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Categories</span>
-                        <div className="flex flex-col gap-2">
-                            {DEFAULT_CATEGORIES.map((category) => (
-                                <label
-                                    key={category.id}
-                                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-1 rounded"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={categories.includes(category.id)}
-                                        onChange={() => toggleCategory(category.id)}
-                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                                    />
-                                    <span className="text-sm text-gray-700 dark:text-gray-300">{category.name}</span>
-                                </label>
-                            ))}
-                        </div>
+                        <Button isIconOnly size="sm" variant="flat" onClick={addCategory}>
+                            <Plus size={16} />
+                        </Button>
                     </div>
 
-                    {/* Tags */}
-                    <div className="flex flex-col gap-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tags</span>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {tags.map((tag) => (
-                                <span
-                                    key={tag}
-                                    className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded flex items-center gap-1 border border-gray-200 dark:border-gray-700"
-                                >
-                                    #{tag}
-                                    <button onClick={() => removeTag(tag)} className="hover:text-red-500">
-                                        <span className="material-symbols-outlined text-[10px]">close</span>
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={tagInput}
-                                onChange={(e) => setTagInput(e.target.value)}
-                                onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault()
-                                        addTag()
-                                    }
-                                }}
-                                className="w-full h-9 px-3 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:border-blue-500 focus:ring-blue-500"
-                                placeholder="Add a tag..."
-                            />
-                            <button onClick={addTag} className="absolute right-1 top-1 bottom-1 text-blue-600 hover:bg-blue-50 rounded px-2">
-                                <span className="material-symbols-outlined text-sm">add</span>
-                            </button>
-                        </div>
+                    <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                        {availableCategories.map((category) => (
+                            <Checkbox
+                                key={category.id}
+                                isSelected={categories.includes(category.id)}
+                                onValueChange={() => toggleCategory(category.id)}
+                                size="sm"
+                            >
+                                <span className="text-sm">{category.name}</span>
+                            </Checkbox>
+                        ))}
                     </div>
                 </div>
-            </div>
+            </section>
+
+            {/* Tags Section */}
+            <section className="flex flex-col gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
+                <h3 className="font-semibold text-sm">Tags</h3>
+
+                <div className="flex flex-col gap-3">
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                            placeholder="Add tag..."
+                            className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm outline-none focus:border-gray-400 transition-all"
+                        />
+                        <Button isIconOnly size="sm" variant="flat" onClick={addTag}>
+                            <Plus size={16} />
+                        </Button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => (
+                            <Chip
+                                key={tag}
+                                size="sm"
+                                variant="flat"
+                                onClose={() => removeTag(tag)}
+                                className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-none"
+                            >
+                                {tag}
+                            </Chip>
+                        ))}
+                        {tags.length === 0 && <span className="text-xs text-gray-400 italic italic">No tags added</span>}
+                    </div>
+                </div>
+            </section>
         </div>
     )
 }

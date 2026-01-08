@@ -291,7 +291,7 @@ export default function ListView({ searchTerm }) {
 	if (isLoading) {
 		return (
 			<div>
-				<CircularProgress />
+				<CircularProgress aria-label="Loading..." />
 			</div>
 		)
 	}

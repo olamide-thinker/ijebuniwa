@@ -76,6 +76,9 @@ export default function ListView() {
 					})}
 				</tbody>
 			</table>
+			<div className="flex justify-center py-10">
+				<CircularProgress aria-label="Loading..." />
+			</div>
 			<div className="flex justify-between text-sm py-3">
 				<Button
 					isDisabled={isLoading || lastSnapDocList?.length === 0}
@@ -117,8 +120,8 @@ function Row({ item, index }) {
 	const totalAmount =
 		Array.isArray(lineItems) && lineItems.length > 0
 			? lineItems.reduce((prev, curr) => {
-					return prev + (curr?.unit_price ?? 0) * (curr?.quantity ?? 0)
-				}, 0)
+				return prev + (curr?.unit_price ?? 0) * (curr?.quantity ?? 0)
+			}, 0)
 			: 0
 
 	const { data: user } = useUser({ uid: item?.uid })
